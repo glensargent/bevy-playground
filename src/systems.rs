@@ -2,10 +2,15 @@ use bevy::{
     // ecs::Mut,
     prelude::*,
     // render::pass::ClearColor,
-    // sprite::collide_aabb::{collide, Collision},
+    sprite::collide_aabb::{collide, Collision},
 };
 
 use crate::components;
+
+#[derive(Debug)]
+pub enum Collider {
+    Solid,
+}
 
 pub fn setup (
     mut commands: Commands,
@@ -52,10 +57,20 @@ pub fn setup (
             sprite: Sprite::new(Vec2::new(30.0, 30.0)),
             ..Default::default()
         })
-        .with(components::Player { speed: 500.0 });
+        .with(components::Player { speed: 500.0 })
+        .with(Collider::Solid)
+        // spawn a basic enemy
+        .spawn(SpriteComponents {
+            material: materials.add(Color::rgb(255.0, 0.0, 0.0).into()),
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+            sprite: Sprite::new(Vec2::new(30.0, 30.0)),
+            ..Default::default()
+        })
+        .with(components::Enemy{ name: "deniz".to_string() })
+        .with(Collider::Solid);
 }
 
-pub fn player_movement_system(
+pub fn player_movement(
     time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
     mut query: Query<(&components::Player, &mut Transform)>,
@@ -88,4 +103,29 @@ pub fn player_movement_system(
         // handle up and down
         // *translation.x_mut() = translation.x().min(380.0).max(-380.0);
     }
+}
+
+pub fn player_collision(
+    mut commands: Commands,
+    mut player_query: Query<(&mut components::Player, &Transform, &Sprite)>,
+    mut collider_query: Query<(Entity, &Collider, &Transform, &Sprite)>,
+) {
+
+    for (player, player_transform, sprite) in &mut player_query.iter() {
+        let player_size = sprite.size;
+        // check collision with enemies
+        for (collision_entity, collider, transform, sprite) in &mut collider_query.iter() {
+            let collision = collide(
+                player_transform.translation(), 
+                player_size, 
+                transform.translation(), 
+                sprite.size
+            );
+
+            if let Some(collision) = collision {
+                println!("collide!!! {:?}", collision);
+            }
+        }
+    }
+
 }

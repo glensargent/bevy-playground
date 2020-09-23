@@ -16,6 +16,7 @@ fn main() {
         })
         .add_default_plugins()
         .add_startup_system(systems::setup.system())
-        .add_system(systems::player_movement_system.system())
+        .add_system(systems::player_movement.system())
+        .add_system(systems::player_collision.system())
         .run();
 }
