@@ -57,7 +57,7 @@ pub fn setup (
             sprite: Sprite::new(Vec2::new(30.0, 30.0)),
             ..Default::default()
         })
-        .with(components::Player { speed: 500.0 })
+        .with(components::Player { velocity: Vec3::new(0.0, 0.0, 0.0), speed: 500.0 })
         .with(Collider::Solid)
         // spawn a basic enemy
         .spawn(SpriteComponents {
@@ -73,35 +73,33 @@ pub fn setup (
 pub fn player_movement(
     time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<(&components::Player, &mut Transform)>,
+    mut query: Query<(&mut components::Player, &mut Transform)>,
 ) {
-    for (player, mut transform) in &mut query.iter() {
-        let mut x_direction = 0.0;
-        let mut y_direction = 0.0;
-        let translation = transform.translation_mut();
-
+    for (mut player, mut transform) in &mut query.iter() {
+        // // let translation = transform.translation_mut();
         if keyboard_input.pressed(KeyCode::A) {
-            x_direction -= 1.0;
-            *translation.x_mut() += time.delta_seconds * x_direction * player.speed;
+            *player.velocity.x_mut() = -player.speed;
+            transform.translate(player.velocity * time.delta_seconds);
+            *player.velocity.x_mut() = 0.0;
         }
 
         if keyboard_input.pressed(KeyCode::D) {
-            x_direction += 1.0;
-            *translation.x_mut() += time.delta_seconds * x_direction * player.speed;
+            *player.velocity.x_mut() = player.speed;
+            transform.translate(player.velocity * time.delta_seconds);
+            *player.velocity.x_mut() = 0.0;
         }
 
         if keyboard_input.pressed(KeyCode::W) {
-            y_direction += 1.0;
-            *translation.y_mut() += time.delta_seconds * y_direction * player.speed;
+            *player.velocity.y_mut() = player.speed;
+            transform.translate(player.velocity * time.delta_seconds);
+            *player.velocity.y_mut() = 0.0;
         }
 
         if keyboard_input.pressed(KeyCode::S) {
-            y_direction -= 1.0;
-            *translation.y_mut() += time.delta_seconds * y_direction * player.speed;
+            *player.velocity.y_mut() = -player.speed;
+            transform.translate(player.velocity * time.delta_seconds);
+            *player.velocity.y_mut() = 0.0;
         }
-
-        // handle up and down
-        // *translation.x_mut() = translation.x().min(380.0).max(-380.0);
     }
 }
 
@@ -111,20 +109,41 @@ pub fn player_collision(
     mut collider_query: Query<(Entity, &Collider, &Transform, &Sprite)>,
 ) {
 
-    for (player, player_transform, sprite) in &mut player_query.iter() {
-        let player_size = sprite.size;
+    for (player, mut player_transform, player_sprite) in &mut player_query.iter() {
         // check collision with enemies
-        for (collision_entity, collider, transform, sprite) in &mut collider_query.iter() {
+        for (collider_entity, _collider, transform, sprite) in &mut collider_query.iter() {
+            // collider entity is the thing the player actually touched
             let collision = collide(
                 player_transform.translation(), 
-                player_size, 
+                player_sprite.size, 
                 transform.translation(), 
                 sprite.size
             );
 
+            // will do this for all collision types by default since there's no
+            // match for the collider type
             if let Some(collision) = collision {
-                println!("collide!!! {:?}", collision);
+                // commands.despawn(collider_entity);
+                match collision {
+                    Collision::Right => {
+                        // let test = player_transform.translation_mut();
+                        println!("{:?}", player_transform);
+                    },
+                    Collision::Left => {
+                        // let translation = player_transform.translation_mut();
+                        // *translation.x_mut() -= 1.0;
+                    },
+                    Collision::Top => {
+                        // let translation = player_transform.translation_mut();
+                        // *translation.x_mut() -= 1.0;
+                    },
+                    Collision::Bottom => {
+                        // let translation = player_transform.translation_mut();
+                        // *translation.x_mut() -= 1.0;
+                    },
+                }
             }
+
         }
     }
 
