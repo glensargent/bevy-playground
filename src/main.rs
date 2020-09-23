@@ -37,7 +37,7 @@ fn setup (
             sprite: Sprite::new(Vec2::new(30.0, 30.0)),
             ..Default::default()
         })
-        .with(Player { speed: 50.0 });
+        .with(Player { speed: 500.0 });
 }
 
 fn player_movement_system(
@@ -46,20 +46,36 @@ fn player_movement_system(
     mut query: Query<(&Player, &mut Transform)>,
 ) {
     for (player, mut transform) in &mut query.iter() {
-        let mut direction = 0.0;
+        let mut x_direction = 0.0;
+        let mut y_direction = 0.0;
+
+
+        let translation = transform.translation_mut();
+
         if keyboard_input.pressed(KeyCode::A) {
-            direction -= 1.0;
+            x_direction -= 1.0;
+            *translation.x_mut() += time.delta_seconds * x_direction * player.speed;
         }
 
         if keyboard_input.pressed(KeyCode::D) {
-            direction += 1.0;
+            x_direction += 1.0;
+            *translation.x_mut() += time.delta_seconds * x_direction * player.speed;
         }
 
-        let translation = transform.translation_mut();
-        // move the player horizontally
-        *translation.x_mut() += time.delta_seconds * direction * player.speed;
-        // bound the player within the walls
-        *translation.x_mut() = translation.x().min(380.0).max(-380.0);
+        if keyboard_input.pressed(KeyCode::W) {
+            y_direction += 1.0;
+            *translation.y_mut() += time.delta_seconds * y_direction * player.speed;
+
+        }
+
+        if keyboard_input.pressed(KeyCode::S) {
+            y_direction -= 1.0;
+            *translation.y_mut() += time.delta_seconds * y_direction * player.speed;
+        }
+
+        // handle up and down
+        // *translation.y_mut() += time.delta_seconds * x_direction * player.speed;
+        // *translation.x_mut() = translation.x().min(380.0).max(-380.0);
     }
 }
 
