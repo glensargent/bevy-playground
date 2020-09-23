@@ -5,7 +5,8 @@ use bevy::{
     sprite::collide_aabb::{collide, Collision},
 };
 
-use crate::components;
+use crate::components::*;
+use crate::resources::*;
 
 #[derive(Debug)]
 pub enum Collider {
@@ -57,7 +58,7 @@ pub fn setup (
             sprite: Sprite::new(Vec2::new(30.0, 30.0)),
             ..Default::default()
         })
-        .with(components::Player { speed: 500.0 })
+        .with(Player { velocity: Vec3::new(0.0, 0.0, 0.0), speed: 500.0 })
         .with(Collider::Solid)
         // spawn a basic enemy
         .spawn(SpriteComponents {
@@ -66,64 +67,87 @@ pub fn setup (
             sprite: Sprite::new(Vec2::new(30.0, 30.0)),
             ..Default::default()
         })
-        .with(components::Enemy{ name: "deniz".to_string() })
+        .with(Enemy{ name: "bob".to_string() })
         .with(Collider::Solid);
 }
 
 pub fn player_movement(
     time: Res<Time>,
+    collision_events: Res<Events<CollisionEvent>>,
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<(&components::Player, &mut Transform)>,
+    mut query: Query<(&mut Player, &mut Transform)>,
 ) {
-    for (player, mut transform) in &mut query.iter() {
-        let mut x_direction = 0.0;
-        let mut y_direction = 0.0;
-        let translation = transform.translation_mut();
 
+    let mut listener = collision_events.get_reader();
+
+    for event in listener.iter(&collision_events) {
+        println!("{:?}", event);
+    }
+    
+    for (mut player, mut transform) in &mut query.iter() {
+        // x axis
         if keyboard_input.pressed(KeyCode::A) {
-            x_direction -= 1.0;
-            *translation.x_mut() += time.delta_seconds * x_direction * player.speed;
-        }
-
-        if keyboard_input.pressed(KeyCode::D) {
-            x_direction += 1.0;
-            *translation.x_mut() += time.delta_seconds * x_direction * player.speed;
+            *player.velocity.x_mut() = -player.speed;
+        } else if keyboard_input.pressed(KeyCode::D) {
+            *player.velocity.x_mut() = player.speed;
+        } else {
+            *player.velocity.x_mut() = 0.0;
         }
 
         if keyboard_input.pressed(KeyCode::W) {
-            y_direction += 1.0;
-            *translation.y_mut() += time.delta_seconds * y_direction * player.speed;
+            *player.velocity.y_mut() = player.speed;
+        } else if keyboard_input.pressed(KeyCode::S) {
+            *player.velocity.y_mut() = -player.speed;
+        } else {
+            *player.velocity.y_mut() = 0.0;
         }
 
-        if keyboard_input.pressed(KeyCode::S) {
-            y_direction -= 1.0;
-            *translation.y_mut() += time.delta_seconds * y_direction * player.speed;
-        }
-
-        // handle up and down
-        // *translation.x_mut() = translation.x().min(380.0).max(-380.0);
+        transform.translate(player.velocity * time.delta_seconds);
     }
 }
 
 pub fn player_collision(
-    mut commands: Commands,
-    mut player_query: Query<(&mut components::Player, &Transform, &Sprite)>,
+    mut _commands: Commands,
+    mut collision_events: ResMut<Events<CollisionEvent>>,
+    mut player_query: Query<(Entity, &mut Player, &Transform, &Sprite)>,
     mut collider_query: Query<(Entity, &Collider, &Transform, &Sprite)>,
 ) {
-
-    for (player, player_transform, sprite) in &mut player_query.iter() {
-        let player_size = sprite.size;
+    for (ent, mut player, player_transform, player_sprite) in &mut player_query.iter() {
         // check collision with enemies
-        for (collision_entity, collider, transform, sprite) in &mut collider_query.iter() {
+        for (ent2, _collider, transform, sprite) in &mut collider_query.iter() {
+            // collider entity is the thing the player actually touched
+            // let test = player_transform;
             let collision = collide(
                 player_transform.translation(), 
-                player_size, 
+                player_sprite.size, 
                 transform.translation(), 
                 sprite.size
             );
 
+            // will do this for all collision types by default since there's no
+            // match for the collider type
             if let Some(collision) = collision {
-                println!("collide!!! {:?}", collision);
+                match collision {
+                    Collision::Right => {
+                        *player.velocity.y_mut() = 0.0;
+                        collision_events.send(CollisionEvent::new(ent, ent2));
+                    },
+                    Collision::Left => {
+                        *player.velocity.y_mut() = 0.0;
+                        collision_events.send(CollisionEvent::new(ent, ent2));
+                    },
+                    Collision::Top => {
+                        *player.velocity.y_mut() = 0.0;
+                        collision_events.send(CollisionEvent::new(ent, ent2));
+                    },
+                    Collision::Bottom => {
+                        *player.velocity.y_mut() = 0.0;
+                        collision_events.send(CollisionEvent::new(ent, ent2));
+                    },
+
+                }
+
+                break;
             }
         }
     }
